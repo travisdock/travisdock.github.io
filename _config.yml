@@ -27,12 +27,29 @@ description: >- # this means to ignore newlines until "baseurl:"
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "travisdock.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: jekyllrb
-github_username: travisdock 
+github_username: travisdock
 
 # Build settings
 theme: minima
 plugins:
   - jekyll-feed
+
+
+comments:
+  provider: giscus
+giscus:
+  repo: "travisdock/travisdock.github.io"
+  repo-id: "R_kgDOIrfGbQ"
+  category: "Announcements"
+  category-id: "DIC_kwDOIrfGbc4CT3zR"
+  mapping: "pathname"
+  strict: "0"
+  reactions-enabled: "1"
+  emit-metadata: "0"
+  input-position: "bottom"
+  theme: "light"
+  lang: "en"
+  crossorigin: "anonymous"
 
 # Exclude from processing.
 # The following items will not be processed, by default.
