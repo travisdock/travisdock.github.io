@@ -1,0 +1,8 @@
+services:
+  jekyll:
+    build: .
+    volumes:
+      - "$PWD:/site"
+    ports:
+      - "4000:4000"
+    tty: true
