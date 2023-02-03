@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Creating a new Rails edge application using Docker and bundler 2.4"
+title: "Creating a new Rails edge application using Docker and Bundler 2.4"
 categories: docker rails bundler
 ---
 
@@ -15,3 +15,7 @@ echo "gem 'rails', github: 'rails/rails'" >> Gemfile
 bundler install
 bundle exec rails new testing --dev
 {% endhighlight %}
+
+You can read more about [Bundler 2.4][bundler-release]
+
+[bundler-release]: https://bundler.io/blog/2023/01/31/bundler-v2-4.html
