@@ -19,6 +19,13 @@ layout: default
     {{ content }}
   </div>
 
+  <br>
+  <hr/>
+  <br>
+  <div>
+    <p>You can comment or add your reaction below by signing into your Github account.</p>
+    <p>If you don't want to sign in here you can also comment directly on the Github discussions page and it will show up here.</p>
+  </div>
   {% assign provider = site.comments.provider %}
   {% if provider == "giscus" %}
     {% assign giscus = site.giscus %}
