@@ -1,7 +1,6 @@
 ---
 layout: post
-title: "Setting up an Ubuntu 22.04 server for a Rails 7 app"
-draft: true
+title: "How I set up an Ubuntu 22.04 server for a Rails 7 app with Nginx, Postgres, and Docker"
 ---
 
 ### Table of Contents
@@ -10,43 +9,65 @@ draft: true
 {:toc}
 
 ### Update before anything else
+
+Download new package information
+
 ```
 apt update
-apt upgrade
-reboot
 ```
 
-Just keep hitting 'y' or enter to accept defaults as it prompts you.
+Upgrade installed packages using new information.  Just keep hitting 'y' or enter to accept defaults as it prompts you.
+
+```
+apt upgrade
+```
+
+Restart the server in order for some upgrades to take effect
+
+```
+reboot
+```
 
 After reboot you may have to wait a minute or two before it will allow you ssh back in.
 
 ### Add deploy user and set up ssh
+> [https://www.digitalocean.com/community/tutorials/initial-server-setup-with-ubuntu-22-04](https://www.digitalocean.com/community/tutorials/initial-server-setup-with-ubuntu-22-04){:target="_blank"}
+
+Create your user. I used the name `deploy` but you can use what you wish.
+
 ```
 adduser deploy
+```
+Add this new user to the sudo group so that they can run privileged commands.
+
+```
 adduser deploy sudo
-mkdir /home/deploy/.ssh
-chmod 700 /home/deploy/.ssh
-cp /root/.ssh/authorized_keys /home/deploy/.ssh/authorized_keys
-chmod 600 /home/deploy/.ssh/authorized_keys
-chown -R deploy:deploy /home/deploy/.ssh
+```
+Copy the authorized keys from root to your new user and give them the proper permissions.
+
+```
+rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
 ```
 
-Now log out and log back in as your new user
+Now log out of root and log back in as your new user.
 
-### Install Nginx
+### Install and Configure Nginx
+> [https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04](https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04){:target="_blank"}
+
+Make sure apt can fetch the correct packages
+
 ```
 sudo apt update
-sudo apt install nginx
-sudo ufw allow 'Nginx HTTP'
-service nginx status
 ```
+
+Install nginx
+
+```
+sudo apt install nginx
+```
+
 If nginx is active you should be able to visit the ip address of your server in the browser now and see the nginx default welcome page.
 
-> DO NOT FORGET TO ALLOW SSH IN UFW OR YOU WILL GET LOCKED OUT OF YOUR SHIT
-
-
-### Configure Nginx proxy
-> https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04
 
 Create a site configuration file for nginx
 
@@ -88,10 +109,55 @@ Then restart nginx to enable the new configuration:
 sudo systemctl restart nginx
 ```
 
+Check status to make sure it is working
+
+```
+service nginx status
+```
+
 We will test this later once we get our rails up running on port 3000
 
+### Enable UFW (Uncomplicated Fire Wall)
+
+Allow ssh so that you can get back into your instance when you need to
+
+```
+sudo ufw allow ssh
+```
+
+Allow all full https and http requests
+
+```
+sudo ufw allow 'Nginx Full'
+```
+
+Turn ufw on
+
+```
+sudo ufw enable
+```
+
+Check status to make sure it is working
+
+```
+sudo ufw status
+```
+
+You should see:
+
+```
+Status: active
+
+To                         Action      From
+--                         ------      ----
+Nginx Full                 ALLOW       Anywhere                  
+22/tcp                     ALLOW       Anywhere                  
+Nginx Full (v6)            ALLOW       Anywhere (v6)             
+22/tcp (v6)                ALLOW       Anywhere (v6)
+```
+
 ### Install Postgres
->https://www.digitalocean.com/community/tutorials/how-to-install-postgresql-on-ubuntu-22-04-quickstart
+>[https://www.digitalocean.com/community/tutorials/how-to-install-postgresql-on-ubuntu-22-04-quickstart](https://www.digitalocean.com/community/tutorials/how-to-install-postgresql-on-ubuntu-22-04-quickstart){:target="_blank"}
 
 ```
 sudo apt update
@@ -121,15 +187,32 @@ Shall the new role be a superuser? (y/n) y
 
 
 ### Install Docker
-> https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04
+> [https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04](https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-22-04){:target="_blank"}
+
+Install the necessary packages
 
 ```
-sudo apt install apt-transport-https ca-certificates curl software-properties-common
+sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+```
+
+Add docker gpg
+
+```
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+
+Update apt so it can now download docker, then install
+
+```
 sudo apt update
 apt-cache policy docker-ce
-sudo apt install docker-ce
+sudo apt install -y docker-ce
+```
+
+Check that it is working
+
+```
 service docker status
 ```
 
@@ -145,45 +228,52 @@ Then log out and log back into the server for the change to take effect. Run `do
 I stored my image on Github Container Registry so I had to log in there:
 
 ```
-export TOKEN=github_token
-echo $TOKEN | docker login ghcr.io -u USERNAME --password-stdin
-docker pull ghcr.io/bla/bla/bla
+export TOKEN=<github_token>
+```
+
+```
+echo $TOKEN | docker login ghcr.io -u <github_username> --password-stdin
+```
+
+```
+docker pull ghcr.io/bla/bla/bla:latest
 ```
 ### Setting up production Rails app
 
 > Because we are using a proxy server we need to set the `config.public_file_server.enabled = true` in the `config/environments/production.rb` file. This is false by default because nginx and apache normally do this for us but because we are only using them as a proxy that isn't happening and none of your precompiled assets will be available.
 
-Create a file called `production.env` to store your production credentials. I found this easier than using rails credentials although perhaps less secure.
-
-```
-DB_PASSWORD=abc123
-SECRET_KEY_BASE=asdf
-```
-
-Run your container with bash to set up some configs before running your server:
-
-```
-docker run --network=host --env-file ./production.env image_name
-```
-
-Or create a `docker-compose.yml` file:
+Create a `docker-compose.yml` file with instructions for docker to start the container and important credentials to add to the env. I found this easier than using rails credentials although perhaps less secure.
 
 ```
 services:
   app:
-    image: docker pull image:latest
+    image: ghcr.io/bla/bla/bla:latest
     network_mode: "host"
     environment:
-      - DB_PASSWORD=abc123
+      - DB_PASSWORD="abc123"
       - SECRET_KEY_BASE=asdf
     restart: always
-    name: app_production
+    container_name: app_production
 ```
 
+You can create a secret by first running your docker container
+
+```
+docker run -it <image_id> bash
+```
+
+And once inside, running the following command:
+
+```
+bin/rake secret
+```
+
+Now you may run your application using `docker compose up -d` and visit your ip address to see if it is working.
+
 ### Install Cerbot for Nginx
-> https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-22-04
+> [https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-22-04](https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-22-04){:target="_blank"}
 >
-> https://www.vultr.com/docs/setup-letsencrypt-on-linux/
+> [https://www.vultr.com/docs/setup-letsencrypt-on-linux/](https://www.vultr.com/docs/setup-letsencrypt-on-linux/){:target="_blank"}
 
 Use snap to install
 
@@ -209,21 +299,6 @@ Link certbot command
 sudo ln -s /snap/bin/certbot /usr/bin/certbot
 ```
 
-Check ufw status
-
-```
-sudo ufw status
-```
-
-Allow full instead of just HTTP
-
-```
-sudo ufw allow 'Nginx Full'
-sudo ufw delete allow 'Nginx HTTP'
-```
-
-Check the status again to make sure it is correct
-
 Obtain SSL Certificate
 
 ```
@@ -231,4 +306,20 @@ sudo certbot --nginx -d example.com -d www.example.com
 ```
 
 ### Backup Postgres
-> https://www.linode.com/docs/guides/back-up-a-postgresql-database/
+> [https://www.linode.com/docs/guides/back-up-a-postgresql-database/](https://www.linode.com/docs/guides/back-up-a-postgresql-database/){:target="_blank"}
+> 
+> [https://www.postgresql.org/docs/current/libpq-pgpass.html](https://www.postgresql.org/docs/current/libpq-pgpass.html){:target="_blank"}
+
+I decided to back up my postgres db nightly at first to make sure it is working and then less often as I gain confidence
+
+Add the following to your crontab via `crontab -e`. This will backup nightly and write logs in case there are errors.
+
+```
+0 0 * * 0 pg_dump -U postgres dbname > ~/backups/dbname.bak 2>> ~/logs/dbname.bak.log
+```
+
+Then you can add a password for the user in their home directory called `.pgpass`
+
+```
+hostname:port:database:username:password
+```
