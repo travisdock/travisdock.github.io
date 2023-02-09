@@ -1,0 +1,18 @@
+pre.highlight > button {
+  opacity: 0;
+  height: 25px;
+}
+
+pre.highlight:hover > button {
+  opacity: 1;
+}
+
+pre.highlight > button:active,
+pre.highlight > button:focus {
+  opacity: 1;
+}
+
+pre.highlight {
+  display: flex;
+  justify-content: space-between;
+}
