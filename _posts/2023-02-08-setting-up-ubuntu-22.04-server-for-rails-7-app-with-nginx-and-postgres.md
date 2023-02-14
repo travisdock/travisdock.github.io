@@ -22,7 +22,7 @@ Upgrade installed packages using new information.  Just keep hitting 'y' or ente
 apt upgrade
 ```
 
-Restart the server in order for some upgrades to take effect
+Restart the server in order for some upgrades to take effect (if needed)
 
 ```
 reboot
@@ -43,13 +43,15 @@ Add this new user to the sudo group so that they can run privileged commands.
 ```
 adduser deploy sudo
 ```
-Copy the authorized keys from root to your new user and give them the proper permissions.
+If you set up your server with SSH keys you can copy the authorized keys from root to your new user and give them the proper permissions.
 
 ```
 rsync --archive --chown=deploy:deploy ~/.ssh /home/deploy
 ```
 
 Now log out of root and log back in as your new user.
+
+> Consider disabling password login if you are using keys and it isn't already disabled.
 
 ### Install and Configure Nginx
 > [https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04](https://www.digitalocean.com/community/tutorials/how-to-configure-nginx-as-a-reverse-proxy-on-ubuntu-22-04){:target="_blank"}
@@ -270,7 +272,7 @@ bin/rake secret
 
 Now you may run your application using `docker compose up -d` and visit your ip address to see if it is working.
 
-### Install Cerbot for Nginx
+### Install Certbot for Nginx
 > [https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-22-04](https://www.digitalocean.com/community/tutorials/how-to-secure-nginx-with-let-s-encrypt-on-ubuntu-22-04){:target="_blank"}
 >
 > [https://www.vultr.com/docs/setup-letsencrypt-on-linux/](https://www.vultr.com/docs/setup-letsencrypt-on-linux/){:target="_blank"}
